@@ -17,7 +17,7 @@ from LogicaNodal import Diagrama, Nodo
 # ==============================
 
 class Usuario:
-    """Representa un usuario del sistema, con sus diagramas personales."""
+    """Representa un usuario del sistema, con sus diagramas personales"""
 
     def __init__(self, nombre: str, contrseña: str):
         self.nombre:str = nombre
@@ -28,7 +28,7 @@ class Usuario:
 
 
 class ServidorNodos:
-    """Maneja todos los usuarios y sus diagramas en memoria."""
+    """Maneja todos los usuarios y sus diagramas en memoria"""
 
     def __init__(self):
         self.usuarios: dict[str, Usuario] = {}
@@ -36,7 +36,7 @@ class ServidorNodos:
         self.inicio()
         
     def inicio(self):
-        """Carga los datos de la base de datos y prepara al servidor para iniciar"""
+        """Carga los datos de la base de datos y prepara al servidor para iniciar, usamos pickle"""
         try:
             with open('data.pkl', 'rb') as usuarios:
                 pass
