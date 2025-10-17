@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Nodos</title>
+    
+    <!-- Vue 3 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.js"></script>
+    
+    <!-- Mermaid para diagramas -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f8f9fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .diagram-selector {
+            position: relative;
+        }
+
+        .diagram-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagram-title:hover {
+            background: #f3f4f6;
+        }
+
+        .diagram-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            min-width: 280px;
+            z-index: 1000;
+        }
+
+        .diagram-dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        .diagram-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .diagram-item:hover {
+            background: #f9fafb;
+        }
+
+        .diagram-item.active {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .diagram-item-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .diagram-item-info {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .create-diagram-btn {
+            padding: 12px 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+            width: 100%;
+            text-align: left;
+        }
+
+        .create-diagram-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .server-config {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .server-input {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .reload-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .reload-btn:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #1f2937;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: #6b7280;
+        }
+
+        .info-value {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            margin-top: 8px;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .children-list {
+            list-style: none;
+            margin-top: 8px;
+        }
+
+        .child-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .child-name {
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .remove-child-btn {
+            background: none;
+            border: none;
+            color: #dc2626;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .remove-child-btn:hover {
+            color: #b91c1c;
+            background: #fee2e2;
+            border-radius: 4px;
+        }
+
+        /* Diagram area */
+        .diagram-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: auto;
+        }
+
+        #mermaid-diagram {
+            cursor: default;
+        }
+
+        /* Make mermaid nodes clickable */
+        #mermaid-diagram .node {
+            cursor: pointer;
+        }
+
+        #mermaid-diagram .node:hover rect,
+        #mermaid-diagram .node:hover circle,
+        #mermaid-diagram .node:hover polygon {
+            filter: brightness(0.95);
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #dc2626;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-message {
+            color: #1f2937;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6b7280;
+            padding: 40px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .modal-actions .btn {
+            width: auto;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <div class="header">
+            <div class="diagram-selector">
+                <div class="diagram-title" @click="toggleDiagramDropdown">
+                    {{ diagramaActual ? diagramaActual.nombre : 'Cargando...' }}
+                    <span>▾</span>
+                </div>
+                
+                <div v-if="showDiagramDropdown" class="diagram-dropdown">
+                    <div class="diagram-dropdown-header">Diagramas</div>
+                    <div 
+                        v-for="diag in diagramas" 
+                        :key="diag.id"
+                        :class="['diagram-item', {active: diag.id === diagramaId}]"
+                        @click="seleccionarDiagrama(diag.id)"
+                    >
+                        <div class="diagram-item-name">{{ diag.nombre }}</div>
+                        <div class="diagram-item-info">{{ diag.num_nodos }} nodos</div>
+                    </div>
+                    <button class="create-diagram-btn" @click="mostrarModalCrearDiagrama">
+                        ➕ Crear nuevo diagrama
+                    </button>
+                </div>
+            </div>
+
+            <div class="server-config">
+                <input 
+                    v-model="serverUrl" 
+                    class="server-input"
+                    placeholder="http://localhost:8000"
+                />
+                <button @click="cargarDiagramas" class="reload-btn">🔄</button>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div :class="['sidebar', {open: nodoSeleccionado}]">
+                <div v-if="nodoSeleccionado" class="sidebar-header">
+                    <div class="sidebar-title">{{ nodoSeleccionado.nombre }}</div>
+                    <button class="close-btn" @click="cerrarSidebar">×</button>
+                </div>
+
+                <div v-if="nodoSeleccionado" class="sidebar-content">
+                    <!-- Información del nodo -->
+                    <div class="section">
+                        <div class="section-title">Información</div>
+                        <div class="info-row">
+                            <span class="info-label">ID</span>
+                            <span class="info-value">{{ nodoSeleccionado.id }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Padres</span>
+                            <span class="info-value">{{ nodoSeleccionado.padres.length }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Hijos</span>
+                            <span class="info-value">{{ nodoSeleccionado.hijos.length }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Homólogos</span>
+                            <span class="info-value">{{ nodoSeleccionado.homologos.length }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Editar contenido -->
+                    <div class="section">
+                        <div class="section-title">Contenido</div>
+                        <form @submit.prevent="actualizarNodo">
+                            <div class="form-group">
+                                <label class="form-label">Nombre</label>
+                                <input 
+                                    v-model="edicionNodo.nombre" 
+                                    class="form-input"
+                                    required
+                                />
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Descripción</label>
+                                <textarea 
+                                    v-model="edicionNodo.contenido"
+                                    class="form-textarea"
+                                    placeholder="Descripción del nodo..."
+                                ></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">URL Git</label>
+                                <input 
+                                    v-model="edicionNodo.gitURL"
+                                    class="form-input"
+                                    placeholder="https://github.com/..."
+                                />
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">💾 Guardar cambios</button>
+                        </form>
+                    </div>
+
+                    <!-- Hijos -->
+                    <div class="section">
+                        <div class="section-title">Hijos ({{ nodoSeleccionado.hijos.length }})</div>
+                        <ul class="children-list">
+                            <li v-for="hijoId in nodoSeleccionado.hijos" :key="hijoId" class="child-item">
+                                <span class="child-name">{{ obtenerNombreNodo(hijoId) }}</span>
+                                <button 
+                                    class="remove-child-btn" 
+                                    @click="eliminarEnlace(nodoSeleccionado.id, hijoId)"
+                                >
+                                    ✕
+                                </button>
+                            </li>
+                        </ul>
+                        <button class="btn btn-primary" @click="mostrarModalCrearHijo">
+                            ➕ Crear hijo
+                        </button>
+                        <button class="btn btn-secondary" @click="mostrarModalEnlazarHijo">
+                            🔗 Enlazar hijo existente
+                        </button>
+                    </div>
+
+                    <!-- Acciones peligrosas -->
+                    <div class="section">
+                        <button 
+                            v-if="nodoSeleccionado.id !== diagramaActual?.nodo_raiz_id"
+                            class="btn btn-danger" 
+                            @click="confirmarEliminarNodo"
+                        >
+                            🗑️ Eliminar nodo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagram -->
+            <div class="diagram-container">
+                <div v-if="cargando" class="loading">Cargando diagrama...</div>
+                <div v-else id="mermaid-diagram" v-html="diagramaHtml" @click="handleDiagramClick"></div>
+            </div>
+        </div>
+
+        <!-- Toast notification -->
+        <div v-if="toast" :class="['toast', toast.tipo]">
+            <span class="toast-message">{{ toast.mensaje }}</span>
+        </div>
+
+        <!-- Modal crear diagrama -->
+        <div v-if="modalCrearDiagrama" class="modal-overlay" @click.self="modalCrearDiagrama = false">
+            <div class="modal">
+                <h2 class="modal-title">Crear nuevo diagrama</h2>
+                <form @submit.prevent="crearDiagrama">
+                    <div class="form-group">
+                        <label class="form-label">Nombre del diagrama</label>
+                        <input 
+                            v-model="nuevoDiagrama.nombre" 
+                            class="form-input"
+                            placeholder="Ej: Proyecto X"
+                            required
+                            autofocus
+                        />
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" @click="modalCrearDiagrama = false">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Crear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal crear hijo -->
+        <div v-if="modalCrearHijo" class="modal-overlay" @click.self="modalCrearHijo = false">
+            <div class="modal">
+                <h2 class="modal-title">Crear hijo para {{ nodoSeleccionado?.nombre }}</h2>
+                <form @submit.prevent="crearHijo">
+                    <div class="form-group">
+                        <label class="form-label">Nombre del nodo</label>
+                        <input 
+                            v-model="nuevoHijo.nombre" 
+                            class="form-input"
+                            placeholder="Ej: Subtarea 1"
+                            required
+                            autofocus
+                        />
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" @click="modalCrearHijo = false">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Crear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal enlazar hijo -->
+        <div v-if="modalEnlazarHijo" class="modal-overlay" @click.self="modalEnlazarHijo = false">
+            <div class="modal">
+                <h2 class="modal-title">Enlazar hijo existente</h2>
+                <form @submit.prevent="enlazarHijo">
+                    <div class="form-group">
+                        <label class="form-label">Seleccionar nodo</label>
+                        <select v-model="enlaceHijo.id_hijo" class="form-select" required>
+                            <option :value="null">-- Seleccionar --</option>
+                            <option 
+                                v-for="nodo in nodosDisponiblesParaEnlazar" 
+                                :key="nodo.id" 
+                                :value="nodo.id"
+                            >
+                                [{{ nodo.id }}] {{ nodo.nombre }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" @click="modalEnlazarHijo = false">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Enlazar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    serverUrl: 'http://localhost:8000',
+                    diagramaId: 1,
+                    diagramas: [],
+                    diagramaActual: null,
+                    nodos: [],
+                    diagramaHtml: '',
+                    cargando: false,
+                    nodoSeleccionado: null,
+                    showDiagramDropdown: false,
+                    toast: null,
+                    modalCrearDiagrama: false,
+                    modalCrearHijo: false,
+                    modalEnlazarHijo: false,
+                    nuevoDiagrama: {
+                        nombre: ''
+                    },
+                    nuevoHijo: {
+                        nombre: ''
+                    },
+                    enlaceHijo: {
+                        id_hijo: null
+                    },
+                    edicionNodo: {
+                        nombre: '',
+                        contenido: '',
+                        gitURL: ''
+                    }
+                }
+            },
+            computed: {
+                nodosDisponiblesParaEnlazar() {
+                    if (!this.nodoSeleccionado) return [];
+                    
+                    // Filtrar nodos que no sean el actual ni sus hijos actuales
+                    return this.nodos.filter(nodo => {
+                        return nodo.id !== this.nodoSeleccionado.id && 
+                               !this.nodoSeleccionado.hijos.includes(nodo.id);
+                    });
+                }
+            },
+            mounted() {
+                mermaid.initialize({ 
+                    startOnLoad: false,
+                    theme: 'default',
+                    flowchart: {
+                        useMaxWidth: true,
+                        htmlLabels: true,
+                        curve: 'basis'
+                    }
+                });
+                
+                this.cargarDiagramas();
+
+                // Cerrar dropdown al hacer click fuera
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.diagram-selector')) {
+                        this.showDiagramDropdown = false;
+                    }
+                });
+            },
+            methods: {
+                async cargarDiagramas() {
+                    try {
+                        const response = await fetch(`${this.serverUrl}/api/diagramas`);
+                        if (!response.ok) throw new Error('Error al cargar diagramas');
+                        
+                        const data = await response.json();
+                        this.diagramas = data.diagramas;
+                        
+                        // Cargar el diagrama actual
+                        await this.cargarDiagrama();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al conectar con el servidor', 'error');
+                    }
+                },
+
+                async cargarDiagrama() {
+                    this.cargando = true;
+                    
+                    try {
+                        // Cargar información del diagrama
+                        const respDiagrama = await fetch(`${this.serverUrl}/api/diagramas/${this.diagramaId}`);
+                        if (!respDiagrama.ok) throw new Error('Diagrama no encontrado');
+                        this.diagramaActual = await respDiagrama.json();
+
+                        // Cargar nodos
+                        const respNodos = await fetch(`${this.serverUrl}/api/diagramas/${this.diagramaId}/nodos`);
+                        if (!respNodos.ok) throw new Error('Error al cargar nodos');
+                        const dataNodos = await respNodos.json();
+                        this.nodos = dataNodos.nodos;
+
+                        // Renderizar Mermaid
+                        const { svg } = await mermaid.render(
+                            'mermaid-graph-' + Date.now(), 
+                            this.diagramaActual.mermaid
+                        );
+                        this.diagramaHtml = svg;
+                        
+                        // Agregar event listeners a los nodos después de renderizar
+                        this.$nextTick(() => {
+                            this.agregarEventListenersNodos();
+                        });
+
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al cargar el diagrama', 'error');
+                        this.diagramaHtml = '<p style="color: #6b7280;">Error al cargar el diagrama</p>';
+                    } finally {
+                        this.cargando = false;
+                    }
+                },
+
+                agregarEventListenersNodos() {
+                    // Obtener todos los nodos del SVG
+                    const nodos = document.querySelectorAll('#mermaid-diagram .node');
+                    
+                    nodos.forEach(nodoElement => {
+                        nodoElement.style.cursor = 'pointer';
+                        
+                        nodoElement.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            
+                            // Extraer el ID del nodo del elemento
+                            const nodeId = nodoElement.id;
+                            
+                            // El ID en Mermaid tiene formato "flowchart-NOMBRE-NUMERO"
+                            // Necesitamos extraer el número del final
+                            const match = nodeId.match(/(\d+)$/);
+                            if (match) {
+                                const id = parseInt(match[1]);
+                                const nodo = this.nodos.find(n => n.id === id);
+                                if (nodo) {
+                                    this.seleccionarNodo(nodo);
+                                }
+                            }
+                        });
+                    });
+                },
+
+                handleDiagramClick(e) {
+                    // Si se hace click en el fondo del diagrama, cerrar sidebar
+                    if (e.target.id === 'mermaid-diagram') {
+                        this.cerrarSidebar();
+                    }
+                },
+
+                seleccionarNodo(nodo) {
+                    this.nodoSeleccionado = nodo;
+                    this.edicionNodo = {
+                        nombre: nodo.nombre,
+                        contenido: nodo.contenido || '',
+                        gitURL: nodo.gitURL || ''
+                    };
+                },
+
+                cerrarSidebar() {
+                    this.nodoSeleccionado = null;
+                },
+
+                toggleDiagramDropdown() {
+                    this.showDiagramDropdown = !this.showDiagramDropdown;
+                },
+
+                async seleccionarDiagrama(id) {
+                    this.diagramaId = id;
+                    this.showDiagramDropdown = false;
+                    this.cerrarSidebar();
+                    await this.cargarDiagrama();
+                },
+
+                mostrarModalCrearDiagrama() {
+                    this.showDiagramDropdown = false;
+                    this.modalCrearDiagrama = true;
+                    this.nuevoDiagrama.nombre = '';
+                },
+
+                async crearDiagrama() {
+                    try {
+                        const response = await fetch(`${this.serverUrl}/api/diagramas`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.nuevoDiagrama)
+                        });
+
+                        if (!response.ok) throw new Error('Error al crear diagrama');
+                        
+                        const data = await response.json();
+                        this.mostrarToast('Diagrama creado exitosamente', 'success');
+                        this.modalCrearDiagrama = false;
+                        
+                        // Recargar y seleccionar el nuevo diagrama
+                        await this.cargarDiagramas();
+                        this.diagramaId = data.id;
+                        await this.cargarDiagrama();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al crear diagrama', 'error');
+                    }
+                },
+
+                mostrarModalCrearHijo() {
+                    this.modalCrearHijo = true;
+                    this.nuevoHijo.nombre = '';
+                },
+
+                async crearHijo() {
+                    if (!this.nodoSeleccionado) return;
+
+                    try {
+                        const response = await fetch(
+                            `${this.serverUrl}/api/diagramas/${this.diagramaId}/nodos`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    nombre: this.nuevoHijo.nombre,
+                                    id_padre: this.nodoSeleccionado.id
+                                })
+                            }
+                        );
+
+                        if (!response.ok) throw new Error('Error al crear nodo');
+                        
+                        this.mostrarToast('Nodo hijo creado', 'success');
+                        this.modalCrearHijo = false;
+                        await this.cargarDiagrama();
+                        
+                        // Reseleccionar el nodo
+                        const nodoActualizado = this.nodos.find(n => n.id === this.nodoSeleccionado.id);
+                        if (nodoActualizado) {
+                            this.seleccionarNodo(nodoActualizado);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al crear nodo', 'error');
+                    }
+                },
+
+                mostrarModalEnlazarHijo() {
+                    this.modalEnlazarHijo = true;
+                    this.enlaceHijo.id_hijo = null;
+                },
+
+                async enlazarHijo() {
+                    if (!this.nodoSeleccionado || !this.enlaceHijo.id_hijo) return;
+
+                    try {
+                        const response = await fetch(
+                            `${this.serverUrl}/api/diagramas/${this.diagramaId}/enlaces`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    id_padre: this.nodoSeleccionado.id,
+                                    id_hijo: this.enlaceHijo.id_hijo
+                                })
+                            }
+                        );
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || 'Error al enlazar nodo');
+                        }
+                        
+                        this.mostrarToast('Nodo enlazado exitosamente', 'success');
+                        this.modalEnlazarHijo = false;
+                        await this.cargarDiagrama();
+                        
+                        // Reseleccionar el nodo
+                        const nodoActualizado = this.nodos.find(n => n.id === this.nodoSeleccionado.id);
+                        if (nodoActualizado) {
+                            this.seleccionarNodo(nodoActualizado);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast(error.message, 'error');
+                    }
+                },
+
+                async eliminarEnlace(idPadre, idHijo) {
+                    if (!confirm('¿Eliminar esta conexión?')) return;
+
+                    try {
+                        const response = await fetch(
+                            `${this.serverUrl}/api/diagramas/${this.diagramaId}/enlaces`,
+                            {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    id_padre: idPadre,
+                                    id_hijo: idHijo
+                                })
+                            }
+                        );
+
+                        if (!response.ok) throw new Error('Error al eliminar enlace');
+                        
+                        this.mostrarToast('Enlace eliminado', 'success');
+                        await this.cargarDiagrama();
+                        
+                        // Reseleccionar el nodo
+                        const nodoActualizado = this.nodos.find(n => n.id === idPadre);
+                        if (nodoActualizado) {
+                            this.seleccionarNodo(nodoActualizado);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al eliminar enlace', 'error');
+                    }
+                },
+
+                async actualizarNodo() {
+                    if (!this.nodoSeleccionado) return;
+
+                    try {
+                        const response = await fetch(
+                            `${this.serverUrl}/api/diagramas/${this.diagramaId}/nodos/${this.nodoSeleccionado.id}`,
+                            {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(this.edicionNodo)
+                            }
+                        );
+
+                        if (!response.ok) throw new Error('Error al actualizar nodo');
+                        
+                        this.mostrarToast('Nodo actualizado', 'success');
+                        await this.cargarDiagrama();
+                        
+                        // Reseleccionar el nodo actualizado
+                        const nodoActualizado = this.nodos.find(n => n.id === this.nodoSeleccionado.id);
+                        if (nodoActualizado) {
+                            this.seleccionarNodo(nodoActualizado);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al actualizar nodo', 'error');
+                    }
+                },
+
+                async confirmarEliminarNodo() {
+                    if (!confirm(`¿Eliminar "${this.nodoSeleccionado.nombre}" y todos sus hijos?`)) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(
+                            `${this.serverUrl}/api/diagramas/${this.diagramaId}/nodos/${this.nodoSeleccionado.id}`,
+                            { method: 'DELETE' }
+                        );
+
+                        if (!response.ok) throw new Error('Error al eliminar nodo');
+                        
+                        this.mostrarToast('Nodo eliminado', 'success');
+                        this.cerrarSidebar();
+                        await this.cargarDiagrama();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.mostrarToast('Error al eliminar nodo', 'error');
+                    }
+                },
+
+                obtenerNombreNodo(id) {
+                    const nodo = this.nodos.find(n => n.id === id);
+                    return nodo ? `[${nodo.id}] ${nodo.nombre}` : `Nodo ${id}`;
+                },
+
+                mostrarToast(mensaje, tipo = 'success') {
+                    this.toast = { mensaje, tipo };
+                    setTimeout(() => {
+                        this.toast = null;
+                    }, 3000);
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
